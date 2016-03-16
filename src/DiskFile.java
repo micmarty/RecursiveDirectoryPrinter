@@ -5,13 +5,14 @@ import java.io.Serializable;
 import java.nio.file.*;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Comparator;
 import java.util.Set;
 import java.util.TreeSet;
 
 /**
  * Created by Michał Martyniak on 14.03.2016.
  */
-public class DiskFile implements Serializable,Comparable<DiskFile>{
+public class DiskFile implements Serializable{
 
     //privates
     private String name;
@@ -21,14 +22,7 @@ public class DiskFile implements Serializable,Comparable<DiskFile>{
     private FileKind kind;
     private Set<DiskFile> childFiles;
 
-
-    @Override//DiskFile objects are compared as normal Strings
-    public int compareTo(DiskFile file)
-    {
-        return name.compareTo(file.name);
-    }
-
-    public DiskFile(Path path) throws IOException {
+    public DiskFile(Path path, Comparator<DiskFile> choosenComparator) throws IOException {
         //name
         name = path.getFileName().toString();
 
@@ -40,11 +34,11 @@ public class DiskFile implements Serializable,Comparable<DiskFile>{
         lastModifiedTime = df.format(Files.getLastModifiedTime(path).toMillis());
 
         //childFiles
-        childFiles = new TreeSet<>();
+        childFiles = new TreeSet<>(choosenComparator);
 
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(path)){
             for (Path entry: stream) {
-                childFiles.add(new DiskFile(entry));    //build set of subfiles
+                childFiles.add(new DiskFile(entry,choosenComparator));    //build set of subfiles
             }
             stream.close();
         }catch(IOException | DirectoryIteratorException x){}
@@ -105,16 +99,13 @@ public class DiskFile implements Serializable,Comparable<DiskFile>{
     public String toString(){
         return null;
     }
-    //dokonczyc metody
-
-    public enum FileKind {
-        REGULAR_FILE,
-        DIRECTORY
-    }
 
     public static void main(String[] args) throws IOException {
         Path path = FileSystems.getDefault().getPath(".");
-        DiskFile diskFile = new DiskFile(path);
+        Comparator<DiskFile> sizeComparator = new SizeComparator();
+        DiskFile diskFile = new DiskFile(path,sizeComparator);
+
         diskFile.listFiles(diskFile,"\t");
+
     }
 }
