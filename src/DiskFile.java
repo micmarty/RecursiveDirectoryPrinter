@@ -12,7 +12,7 @@ import java.util.TreeSet;
 /**
  * Created by Michał Martyniak on 14.03.2016.
  */
-public class DiskFile implements Serializable{
+public class DiskFile implements Serializable, Comparable{
 
     //privates
     private String name;
@@ -21,6 +21,33 @@ public class DiskFile implements Serializable{
     private String lastModifiedTime;
     private FileKind kind;
     private Set<DiskFile> childFiles;
+
+    @Override
+    //default comparator(USELESSSSSS, because its the same as SizeComparator
+    //it is required that method takes Object, not DiskFIle class, Otherwise overriding fails
+    public int compareTo(Object o) {
+        int result_of_comparison=0;
+
+        //if different FileTypes, Directory is always lesser(higher in listing)
+        if(this.kind != ((DiskFile)o).kind)
+        {
+            if(this.getKind() == FileKind.REGULAR_FILE)
+                return -1;
+            else//o2 is regular file
+                return 1;
+        }
+
+        //if types are the same, then compare its sizes
+
+        if(this.size < ((DiskFile)o).size)
+            result_of_comparison = -1;
+        else if(this.size == ((DiskFile)o).size)
+            result_of_comparison = 0;
+        else//o1 greater than o2
+            result_of_comparison = 1;
+
+        return result_of_comparison;
+    }
 
     public DiskFile(Path path, Comparator<DiskFile> choosenComparator) throws IOException {
         //name
@@ -34,7 +61,10 @@ public class DiskFile implements Serializable{
         lastModifiedTime = df.format(Files.getLastModifiedTime(path).toMillis());
 
         //childFiles
-        childFiles = new TreeSet<>(choosenComparator);
+        if(choosenComparator == null)
+            childFiles = new TreeSet<>();
+        else
+            childFiles = new TreeSet<>(choosenComparator);
 
         try(DirectoryStream<Path> stream = Files.newDirectoryStream(path)){
             for (Path entry: stream) {
@@ -103,9 +133,12 @@ public class DiskFile implements Serializable{
     public static void main(String[] args) throws IOException {
         Path path = FileSystems.getDefault().getPath(".");
         Comparator<DiskFile> sizeComparator = new SizeComparator();
-        DiskFile diskFile = new DiskFile(path,sizeComparator);
+        Comparator<DiskFile> nameLengthComparator = new NameLengthComparator();
+
+        DiskFile diskFile = new DiskFile(path,null);
 
         diskFile.listFiles(diskFile,"\t");
 
     }
+
 }
